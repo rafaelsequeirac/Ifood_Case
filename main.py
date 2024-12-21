@@ -31,6 +31,49 @@ def adicionar_regressor_evento(dados, ano_evento=2022, mes_evento=3):
     )
     return dados
 
+def previsao_linear_intervalo(base, meses_futuros, intervalo_confianca, titulo, formato_y):
+    base = base.sort_values('ds')
+    base['diferenca'] = base['y'].diff()
+    taxa_crescimento = base['diferenca'].mean()
+    desvio_padrao = np.std(base['diferenca'].dropna()) * (1 - intervalo_confianca)
+
+    ultima_data = base['ds'].max()
+    datas_futuras = [ultima_data + pd.DateOffset(months=i) for i in range(1, meses_futuros + 1)]
+
+    ultimo_valor = base['y'].iloc[-1]
+    previsoes = [ultimo_valor + taxa_crescimento * i for i in range(1, meses_futuros + 1)]
+    previsoes_superior = [valor + desvio_padrao for valor in previsoes]
+    previsoes_inferior = [valor - desvio_padrao for valor in previsoes]
+
+    previsao_df = pd.DataFrame({
+        'ds': datas_futuras,
+        'yhat': previsoes,
+        'yhat_superior': previsoes_superior,
+        'yhat_inferior': previsoes_inferior
+    })
+
+    crescimento_percentual = ((previsoes[-1] - ultimo_valor) / ultimo_valor) * 100
+    deslocamento_texto = abs(previsoes[-1] - ultimo_valor) * 0.7
+    texto_y = previsoes[-1] - deslocamento_texto if crescimento_percentual > 0 else previsoes[-1] + deslocamento_texto
+
+    plt.figure(figsize=(14, 8))
+    plt.plot(base['ds'], base['y'], label='Histórico', color='#B3B3B3', linewidth=2)
+    plt.plot(previsao_df['ds'], previsao_df['yhat'], label='Projeção', color='#D7A1A5', linestyle='--', linewidth=2)
+    plt.fill_between(previsao_df['ds'], previsao_df['yhat_inferior'], previsao_df['yhat_superior'], color='#D7A1A5', alpha=0.2, label='Intervalo de Confiança')
+    plt.gca().xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter("%m/%Y"))
+    plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(formato_y))
+    plt.annotate(f"{crescimento_percentual:.2f}%", xy=(previsao_df['ds'].iloc[-1], previsoes[-1]), xytext=(previsao_df['ds'].iloc[-1], texto_y), fontsize=12, color='#D7A1A5', weight='semibold', ha='center', arrowprops=dict(arrowstyle="->", color='#D7A1A5', lw=1.5))
+    plt.grid(axis='y', color='#C8C6C4', alpha=0.3, linestyle='--')
+    plt.xlabel("")
+    plt.ylabel("")
+    plt.gca().spines['top'].set_visible(False)
+    plt.gca().spines['right'].set_visible(False)
+    plt.title(titulo)
+    plt.legend()
+    plt.show()
+
+    return previsao_df, crescimento_percentual
+
 def plotar_previsoes(previsoes, dados, titulo, formato_y):
     plt.figure(figsize=(12, 6))
     historico = previsoes[previsoes['ds'] <= dados['ds'].max()]
@@ -66,7 +109,15 @@ def plotar_previsoes(previsoes, dados, titulo, formato_y):
     plt.show()
 
 def plotar_previsoes_por_segmento(previsoes, dados, titulo):
+    
+    segmento_traduzido = {
+    "A": "Restaurantes",
+    "B": "Mercados",
+    "C": "Farmácias"
+    }
+
     for segmento, previsao in previsoes.items():
+        nome_traduzido = segmento_traduzido.get(segmento, segmento)
         dados_segmento = dados[dados['Segmento'] == segmento]
         plt.figure(figsize=(12, 6))
         historico = previsao[previsao['ds'] <= dados_segmento['Data'].max()]
@@ -98,7 +149,7 @@ def plotar_previsoes_por_segmento(previsoes, dados, titulo):
                 return f"R${valor / 1e3:.0f} Mil"
 
         plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(formatar_eixo_y))
-        plt.title(f"{titulo} - {segmento}", fontsize=14, weight='bold', color='#333333')
+        plt.title(f"{titulo} - {nome_traduzido}", fontsize=14, weight='bold', color='#333333')
         plt.gca().spines['top'].set_visible(False)
         plt.gca().spines['right'].set_visible(False)
         plt.legend()
@@ -136,6 +187,9 @@ futuro_pedidos['promo_marco'] = futuro_pedidos['ds'].apply(lambda x: 1 if x.mont
 
 previsao_receita = modelo_receita.predict(futuro_receita)
 previsao_pedidos = modelo_pedidos.predict(futuro_pedidos)
+
+previsao_linear_intervalo(base_receita, meses_futuros=6, intervalo_confianca=0.7, titulo="Projeção Linear de Receita", formato_y=formatar_valor_milhoes)
+previsao_linear_intervalo(base_pedidos, meses_futuros=6, intervalo_confianca=0.7, titulo="Projeção Linear de Pedidos", formato_y=formatar_valor_inteiros)
 
 plotar_previsoes(previsao_receita, base_receita, "Projeção de Receita com Sazonalidade de Março", formatar_valor_milhoes)
 plotar_previsoes(previsao_pedidos, base_pedidos, "Projeção de Pedidos com Sazonalidade de Março", formatar_valor_inteiros)
