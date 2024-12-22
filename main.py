@@ -53,10 +53,10 @@ def previsao_linear_intervalo(base, meses_futuros, intervalo_confianca, titulo, 
     })
 
     crescimento_percentual = ((previsoes[-1] - ultimo_valor) / ultimo_valor) * 100
-    deslocamento_texto = abs(previsoes[-1] - ultimo_valor) * 0.7
+    deslocamento_texto = abs(previsoes[-1] - ultimo_valor) * 0.9
     texto_y = previsoes[-1] - deslocamento_texto if crescimento_percentual > 0 else previsoes[-1] + deslocamento_texto
 
-    plt.figure(figsize=(14, 8))
+    plt.figure(figsize=(10, 5))
     plt.plot(base['ds'], base['y'], label='Histórico', color='#B3B3B3', linewidth=2)
     plt.plot(previsao_df['ds'], previsao_df['yhat'], label='Projeção', color='#D7A1A5', linestyle='--', linewidth=2)
     plt.fill_between(previsao_df['ds'], previsao_df['yhat_inferior'], previsao_df['yhat_superior'], color='#D7A1A5', alpha=0.2, label='Intervalo de Confiança')
@@ -75,7 +75,7 @@ def previsao_linear_intervalo(base, meses_futuros, intervalo_confianca, titulo, 
     return previsao_df, crescimento_percentual
 
 def plotar_previsoes(previsoes, dados, titulo, formato_y):
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(10, 5))
     historico = previsoes[previsoes['ds'] <= dados['ds'].max()]
     projetado = previsoes[previsoes['ds'] > dados['ds'].max()]
 
@@ -119,7 +119,7 @@ def plotar_previsoes_por_segmento(previsoes, dados, titulo):
     for segmento, previsao in previsoes.items():
         nome_traduzido = segmento_traduzido.get(segmento, segmento)
         dados_segmento = dados[dados['Segmento'] == segmento]
-        plt.figure(figsize=(12, 6))
+        plt.figure(figsize=(10, 5))
         historico = previsao[previsao['ds'] <= dados_segmento['Data'].max()]
         projetado = previsao[previsao['ds'] > dados_segmento['Data'].max()]
         plt.plot(historico['ds'], historico['yhat'], label='Histórico', color='#B3B3B3', linewidth=2)
@@ -159,7 +159,7 @@ def formatar_valor_milhoes(valor, _):
     return f"R${valor / 1e6:.0f} Mi"
 
 def formatar_valor_inteiros(valor, _):
-    return f"{int(valor):,}".replace(',', '.')
+    return f"{valor / 1000000:.1f} Mi"
 
 
 base_bruta = carregar_arquivo()
